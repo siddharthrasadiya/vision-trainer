@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vision Trainer</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #fff; --text: #1d2330; --muted: #6b7280; --line: #e5e7eb;
+    --accent: #4f46e5; --accent-soft: #eef2ff; --danger: #dc2626; --ok: #16a34a; --warn: #d97706;
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f1115; --panel: #181b22; --text: #e8eaf0; --muted: #9aa1ae; --line: #2a2f3a;
+            --accent: #818cf8; --accent-soft: #23264a; }
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+  header { display: flex; align-items: center; gap: 24px; padding: 14px 24px; background: var(--panel); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; flex-wrap: wrap; }
+  header h1 { font-size: 18px; margin: 0; }
+  nav { display: flex; gap: 4px; }
+  nav button { border: 0; background: none; color: var(--muted); padding: 8px 14px; border-radius: 8px; font: inherit; cursor: pointer; }
+  nav button.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+  .view { display: none; } .view.active { display: block; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 800px) { .grid2 { grid-template-columns: 1fr; } }
+  h2 { font-size: 17px; margin: 0; }
+  .muted { color: var(--muted); font-size: 13px; }
+  input[type=text], input[type=number] { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--text); font: inherit; }
+  .btn { border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 9px 16px; border-radius: 10px; font: inherit; cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.danger { color: var(--danger); }
+  .btn.ghost { border-color: transparent; background: none; color: var(--muted); }
+  .btn.rec { background: var(--danger); border-color: var(--danger); color: #fff; }
+  .btn.big { padding: 14px 26px; font-size: 16px; font-weight: 600; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .spacer { flex: 1; }
+
+  /* add item bar */
+  .addbar { display: flex; gap: 10px; align-items: center; }
+  .addbar input { flex: 1; font-size: 16px; }
+  .steps { display: flex; gap: 18px; margin-top: 12px; flex-wrap: wrap; }
+  .steps span { font-size: 13px; color: var(--muted); }
+  .steps b { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-size: 12px; margin-right: 6px; }
+
+  /* item cards */
+  .items { display: flex; flex-direction: column; gap: 14px; margin-top: 18px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; }
+  .card-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .card-head h2 { text-transform: capitalize; }
+  .badge { font-size: 12px; padding: 3px 10px; border-radius: 99px; background: var(--bg); color: var(--muted); font-weight: 600; }
+  .badge.low { color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); }
+  .badge.mid { color: var(--accent); background: var(--accent-soft); }
+  .badge.good { color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); }
+  .meter { height: 6px; background: var(--bg); border-radius: 99px; overflow: hidden; margin: 12px 0 4px; }
+  .meter div { height: 100%; border-radius: 99px; transition: width .3s; }
+  .photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; margin-top: 12px; }
+  .photo { position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden; background: var(--line); }
+  .photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .photo .del { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border-radius: 50%; border: 0; background: rgba(0,0,0,.65); color: #fff; cursor: pointer; opacity: 0; transition: opacity .15s; font-size: 12px; }
+  .photo:hover .del { opacity: 1; }
+  @media (hover: none) { .photo .del { opacity: 1; } }
+  .nophotos { margin-top: 12px; padding: 18px; border: 2px dashed var(--line); border-radius: 10px; text-align: center; color: var(--muted); font-size: 14px; }
+  .empty { text-align: center; padding: 50px 10px; color: var(--muted); }
+
+  /* camera modal */
+  .modal { position: fixed; inset: 0; background: rgba(10,12,18,.75); display: none; align-items: center; justify-content: center; z-index: 20; padding: 16px; }
+  .modal.open { display: flex; }
+  .modal-box { background: var(--panel); border-radius: 18px; width: min(760px, 100%); max-height: 100%; overflow: auto; padding: 20px; }
+  .cam { position: relative; background: #000; border-radius: 12px; overflow: hidden; aspect-ratio: 4/3; margin-top: 14px; }
+  .cam video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); display: block; }
+  .cam .counter { position: absolute; left: 12px; top: 12px; background: rgba(0,0,0,.6); color: #fff; padding: 5px 12px; border-radius: 8px; font-size: 14px; font-weight: 600; }
+  .cam .recdot { position: absolute; right: 12px; top: 12px; background: var(--danger); color: #fff; padding: 5px 12px; border-radius: 8px; font-size: 13px; display: none; }
+  .cam.recording .recdot { display: block; }
+  .cam .status { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 15px; }
+  .flash { animation: flash .25s; } @keyframes flash { from { box-shadow: 0 0 0 6px #fff inset; } }
+  .strip { display: flex; gap: 6px; margin-top: 12px; overflow-x: auto; min-height: 60px; }
+  .strip img { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; flex: none; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 16px; align-items: center; flex-wrap: wrap; }
+
+  /* train + predict */
+  .progress { height: 10px; background: var(--bg); border-radius: 99px; overflow: hidden; margin: 12px 0; }
+  .progress div { height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 10px; }
+  td, th { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); }
+  .msg { padding: 10px 12px; border-radius: 10px; background: var(--bg); font-size: 14px; margin-top: 10px; }
+  .msg.error { color: var(--danger); } .msg.done { color: var(--ok); }
+  .bigLabel { font-size: 36px; font-weight: 700; margin: 4px 0 2px; text-transform: capitalize; }
+  .bars { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+  .bar { display: grid; grid-template-columns: 110px 1fr 48px; gap: 10px; align-items: center; font-size: 14px; }
+  .bar .track { height: 12px; background: var(--bg); border-radius: 99px; overflow: hidden; }
+  .bar .fill { height: 100%; background: var(--accent); transition: width .2s; }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 10px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 30; }
+  .toast.show { opacity: 1; }
+  kbd { font: 12px ui-monospace, monospace; border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; background: var(--bg); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Vision Trainer</h1>
+  <nav>
+    <button data-view="collect" class="active">1. Collect</button>
+    <button data-view="train">2. Train</button>
+    <button data-view="predict">3. Predict</button>
+  </nav>
+</header>
+
+<main>
+  <!-- ================= COLLECT ================= -->
+  <section id="collect" class="view active">
+    <div class="panel">
+      <form class="addbar" id="addForm">
+        <input type="text" id="newName" placeholder="Enter item name, e.g. watch, bag, laptop" autocomplete="off">
+        <button class="btn primary big">+ Add item</button>
+      </form>
+      <div class="steps">
+        <span><b>1</b>Add an item</span>
+        <span><b>2</b>Click "Take photos" and capture 50–100+</span>
+        <span><b>3</b>Repeat for every item, then go to Train</span>
+      </div>
+    </div>
+    <div class="items" id="items"></div>
+  </section>
+
+  <!-- ================= TRAIN ================= -->
+  <section id="train" class="view">
+    <div class="grid2">
+      <div class="panel">
+        <h2>Training data</h2>
+        <table id="trainTable"></table>
+        <div style="margin-top:16px">
+          <label class="muted">Epochs (training rounds)</label>
+          <input type="number" id="epochs" value="10" min="1" max="50">
+        </div>
+        <button class="btn primary big" id="trainBtn" style="width:100%;justify-content:center;margin-top:14px">Train model</button>
+      </div>
+      <div class="panel">
+        <h2>Progress</h2>
+        <div class="msg" id="trainMsg">Press "Train model" when every item has enough photos.</div>
+        <div class="progress"><div id="trainBar"></div></div>
+        <table id="historyTable"></table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PREDICT ================= -->
+  <section id="predict" class="view">
+    <div class="grid2">
+      <div class="panel">
+        <div class="cam" style="margin-top:0"><video id="videoPredict" autoplay playsinline muted></video>
+          <div class="status" id="predictStatus">Camera is off</div></div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn primary big" id="predictBtn">Start predicting</button>
+          <span class="muted" id="modelInfo"></span>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="muted">I see...</div>
+        <div class="bigLabel" id="predLabel">—</div>
+        <div class="muted" id="predConf"></div>
+        <div class="bars" id="bars"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ================= CAMERA MODAL ================= -->
+<div class="modal" id="camModal">
+  <div class="modal-box">
+    <div class="row">
+      <h2>Taking photos of <span id="camName" style="text-transform:capitalize"></span></h2>
+      <span class="spacer"></span>
+      <button class="btn ghost" id="camClose" title="Close">✕</button>
+    </div>
+    <div class="muted" style="margin-top:4px">Move the object around: turn it, tilt it, bring it closer and further. Shortcuts: <kbd>Space</kbd> take photo, <kbd>A</kbd> auto, <kbd>Esc</kbd> done.</div>
+    <div class="cam" id="camBox">
+      <video id="videoCollect" autoplay playsinline muted></video>
+      <div class="status" id="camStatus">Starting camera...</div>
+      <div class="counter" id="camCount">0 photos</div>
+      <div class="recdot">● Auto capturing</div>
+    </div>
+    <div class="strip" id="camStrip"></div>
+    <div class="modal-actions">
+      <button class="btn primary big" id="snapBtn">📷 Take photo</button>
+      <button class="btn big" id="autoBtn">Auto capture</button>
+      <span class="spacer"></span>
+      <button class="btn big" id="doneBtn">✓ Done</button>
+    </div>
+  </div>
+</div>
+<input type="file" id="fileInput" accept="image/*" multiple hidden>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const api = async (url, opts = {}) => {
+  let r;
+  try { r = await fetch(url, opts); }
+  catch (e) { throw new Error("Can't reach the app server. Is the black run_app window still open? Start run_app.bat again."); }
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || r.statusText);
+  return data;
+};
+const json = (method, body) => ({ method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+const toast = t => { const el = $("#toast"); el.textContent = t; el.classList.add("show"); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove("show"), 2200); };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const PREVIEW = 16;   // photos shown per item before "Show all"
+
+let classes = [], modelLabels = [], stream = null, camItem = null, autoTimer = null, predicting = false, uploadFor = null;
+const expanded = new Set();
+
+// ---------------- tabs ----------------
+function showView(name) {
+  document.querySelectorAll("nav button").forEach(x => x.classList.toggle("active", x.dataset.view === name));
+  document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id === name));
+  stopPredict();
+  if (name === "collect") renderItems();
+  if (name === "train") renderTrainTable();
+  if (name === "predict") renderModelInfo();
+}
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => showView(b.dataset.view));
+
+// ---------------- camera ----------------
+async function cameraOn(video, statusEl) {
+  statusEl.textContent = "Starting camera..."; statusEl.hidden = false;
+  try {
+    if (!stream) stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+    video.srcObject = stream; await video.play().catch(() => {});
+    statusEl.hidden = true; return true;
+  } catch (e) {
+    statusEl.textContent = "Camera not available: " + e.message + ". Close other apps using the camera and allow access in the browser.";
+    return false;
+  }
+}
+function cameraOff() {
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  stream = null;
+}
+function grab(video, w = 640, h = 480) {
+  if (!video.videoWidth) return null;
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  c.getContext("2d").drawImage(video, 0, 0, w, h);
+  return c.toDataURL("image/jpeg", 0.9);
+}
+
+// ---------------- collect: item list ----------------
+async function loadClasses() {
+  const d = await api("/api/classes");
+  classes = d.classes; modelLabels = d.model_labels;
+}
+function level(n) {
+  if (n < 10) return { cls: "low", text: "Need at least 10", color: "var(--warn)" };
+  if (n < 50) return { cls: "mid", text: "OK — more is better", color: "var(--accent)" };
+  return { cls: "good", text: "Great", color: "var(--ok)" };
+}
+async function renderItems() {
+  await loadClasses();
+  const box = $("#items");
+  if (!classes.length) { box.innerHTML = '<div class="panel empty">No items yet. Type a name above and click <b>Add item</b>.</div>'; return; }
+  const imgs = await Promise.all(classes.map(c => api(`/api/classes/${c.name}/images`)));
+  box.innerHTML = "";
+  classes.forEach((c, i) => box.appendChild(itemCard(c.name, imgs[i])));
+}
+function itemCard(name, imgs) {
+  const n = imgs.length, lv = level(n), open = expanded.has(name);
+  const card = document.createElement("div"); card.className = "card"; card.id = "card-" + name;
+  card.innerHTML = `
+    <div class="card-head">
+      <h2>${esc(name)}</h2>
+      <span class="badge ${lv.cls}">${n} photos · ${lv.text}</span>
+      <span class="spacer"></span>
+      <button class="btn primary" data-act="cam">📷 Take photos</button>
+      <button class="btn" data-act="upload">Upload</button>
+      <button class="btn danger" data-act="clear" ${n ? "" : "disabled"}>Delete all photos</button>
+      <button class="btn ghost" data-act="remove" title="Remove item">🗑</button>
+    </div>
+    <div class="meter"><div style="width:${Math.min(100, n)}%;background:${lv.color}"></div></div>
+    ${n ? `<div class="photos"></div>` : `<div class="nophotos">No photos yet — click <b>Take photos</b> to open the camera.</div>`}
+    ${n > PREVIEW ? `<div style="margin-top:10px"><button class="btn ghost" data-act="more">${open ? "Show less" : `Show all ${n} photos`}</button></div>` : ""}`;
+  const grid = card.querySelector(".photos");
+  if (grid) (open ? imgs : imgs.slice(0, PREVIEW)).forEach(im => grid.appendChild(photoTile(name, im)));
+  card.querySelector('[data-act=cam]').onclick = () => openCamModal(name);
+  card.querySelector('[data-act=upload]').onclick = () => { uploadFor = name; $("#fileInput").click(); };
+  card.querySelector('[data-act=clear]').onclick = async () => {
+    if (!confirm(`Delete all ${n} photos of "${name}"?`)) return;
+    await api(`/api/classes/${name}/images`, { method: "DELETE" }); renderItems();
+  };
+  card.querySelector('[data-act=remove]').onclick = async () => {
+    if (!confirm(`Remove "${name}" and all its photos?`)) return;
+    await api(`/api/classes/${name}`, { method: "DELETE" }); toast(`Removed "${name}"`); renderItems();
+  };
+  const more = card.querySelector('[data-act=more]');
+  if (more) more.onclick = () => { open ? expanded.delete(name) : expanded.add(name); refreshCard(name); };
+  return card;
+}
+function photoTile(name, im) {
+  const d = document.createElement("div"); d.className = "photo";
+  d.innerHTML = `<img loading="lazy" alt=""><button class="del" title="Delete photo">✕</button>`;
+  d.querySelector("img").src = im.url;
+  d.querySelector(".del").onclick = async () => {
+    await api(`/api/classes/${name}/images/${im.file}`, { method: "DELETE" }); refreshCard(name);
+  };
+  return d;
+}
+async function refreshCard(name) {
+  const old = document.getElementById("card-" + name); if (!old) return renderItems();
+  const imgs = await api(`/api/classes/${name}/images`);
+  old.replaceWith(itemCard(name, imgs));
+}
+
+$("#addForm").onsubmit = async e => {
+  e.preventDefault();
+  const name = $("#newName").value; if (!name.trim()) return;
+  try {
+    const r = await api("/api/classes", json("POST", { name }));
+    $("#newName").value = "";
+    await renderItems();
+    openCamModal(r.name);           // go straight to taking photos
+  } catch (err) { toast(err.message); }
+};
+$("#fileInput").onchange = async e => {
+  if (!uploadFor || !e.target.files.length) return;
+  const fd = new FormData(); for (const f of e.target.files) fd.append("files", f);
+  const r = await api(`/api/classes/${uploadFor}/images`, { method: "POST", body: fd });
+  toast(`Uploaded ${r.saved.length} photos to "${uploadFor}"`); e.target.value = ""; refreshCard(uploadFor);
+};
+
+// ---------------- collect: camera modal ----------------
+async function openCamModal(name) {
+  camItem = name;
+  $("#camName").textContent = name; $("#camStrip").innerHTML = "";
+  const c = classes.find(c => c.name === name);
+  $("#camCount").textContent = `${c ? c.count : 0} photos`;
+  $("#camModal").classList.add("open");
+  await cameraOn($("#videoCollect"), $("#camStatus"));
+}
+async function closeCamModal() {
+  stopAuto();
+  $("#camModal").classList.remove("open");
+  cameraOff();
+  const name = camItem; camItem = null;
+  if (name) { await loadClasses(); refreshCard(name); }
+}
+async function snap() {
+  if (!camItem) return;
+  const data = grab($("#videoCollect")); if (!data) return;
+  const box = $("#camBox"); box.classList.remove("flash"); void box.offsetWidth; box.classList.add("flash");
+  try {
+    const r = await api(`/api/classes/${camItem}/images`, json("POST", { image: data }));
+    $("#camCount").textContent = `${r.count} photos`;
+    for (const f of r.saved) {
+      const img = document.createElement("img"); img.src = `/dataset/${camItem}/${f}`;
+      $("#camStrip").prepend(img);
+    }
+    const strip = $("#camStrip"); while (strip.children.length > 30) strip.lastChild.remove();
+  } catch (e) { toast(e.message); stopAuto(); }
+}
+function startAuto() {
+  autoTimer = setInterval(snap, 250);
+  $("#autoBtn").textContent = "Stop auto"; $("#autoBtn").classList.add("rec"); $("#camBox").classList.add("recording");
+}
+function stopAuto() {
+  clearInterval(autoTimer); autoTimer = null;
+  $("#autoBtn").textContent = "Auto capture"; $("#autoBtn").classList.remove("rec"); $("#camBox").classList.remove("recording");
+}
+$("#snapBtn").onclick = snap;
+$("#autoBtn").onclick = () => autoTimer ? stopAuto() : startAuto();
+$("#doneBtn").onclick = closeCamModal;
+$("#camClose").onclick = closeCamModal;
+document.addEventListener("keydown", e => {
+  if (!$("#camModal").classList.contains("open")) return;
+  if (e.code === "Space") { e.preventDefault(); snap(); }
+  else if (e.key === "a" || e.key === "A") { autoTimer ? stopAuto() : startAuto(); }
+  else if (e.key === "Escape") closeCamModal();
+});
+
+// ---------------- train ----------------
+async function renderTrainTable() {
+  await loadClasses();
+  const t = $("#trainTable");
+  if (!classes.length) { t.innerHTML = '<tr><td class="muted">No items yet. Add some in Collect.</td></tr>'; return; }
+  t.innerHTML = "<tr><th>Item</th><th>Photos</th><th></th></tr>" + classes.map(c => {
+    const lv = level(c.count);
+    return `<tr><td style="text-transform:capitalize">${esc(c.name)}</td><td>${c.count}</td><td><span class="badge ${lv.cls}">${lv.text}</span></td></tr>`;
+  }).join("");
+}
+$("#trainBtn").onclick = async () => {
+  try { await api("/api/train", json("POST", { epochs: +$("#epochs").value })); pollTraining(); }
+  catch (e) { const m = $("#trainMsg"); m.textContent = e.message; m.className = "msg error"; }
+};
+async function pollTraining() {
+  const s = await api("/api/train/status");
+  const m = $("#trainMsg");
+  if (s.state !== "idle") { m.textContent = s.message; m.className = "msg " + (s.state === "error" ? "error" : s.state === "done" ? "done" : ""); }
+  $("#trainBar").style.width = (s.epochs ? s.epoch / s.epochs * 100 : 0) + "%";
+  $("#trainBtn").disabled = s.state === "running";
+  $("#trainBtn").textContent = s.state === "running" ? "Training..." : "Train model";
+  $("#historyTable").innerHTML = s.history.length ? "<tr><th>Round</th><th>Train acc.</th><th>Test acc.</th><th>Loss</th></tr>" +
+    s.history.map(h => `<tr><td>${h.epoch}</td><td>${(h.accuracy*100).toFixed(1)}%</td><td>${(h.val_accuracy*100).toFixed(1)}%</td><td>${h.loss}</td></tr>`).join("") : "";
+  if (s.state === "running") setTimeout(pollTraining, 1000);
+  else if (s.state === "done") loadClasses();
+}
+
+// ---------------- predict ----------------
+async function renderModelInfo() {
+  await loadClasses();
+  const now = classes.map(c => c.name).join(","), trained = modelLabels.join(",");
+  $("#modelInfo").textContent = !modelLabels.length ? "No model yet. Train first."
+    : now !== trained ? "Items changed since last training — retrain for best results."
+    : "Knows: " + modelLabels.join(", ");
+}
+$("#predictBtn").onclick = () => predicting ? stopPredict() : startPredict();
+async function startPredict() {
+  if (!(await cameraOn($("#videoPredict"), $("#predictStatus")))) return;
+  predicting = true; $("#predictBtn").textContent = "Stop";
+  if ($("#predLabel").textContent === "—") $("#predConf").textContent = "Loading model, first time takes a few seconds...";
+  while (predicting) {
+    const data = grab($("#videoPredict"), 320, 240);
+    if (data) {
+      try { showPrediction((await api("/api/predict", json("POST", { image: data }))).results); }
+      catch (e) { toast(e.message); stopPredict(); break; }
+    }
+    await new Promise(r => setTimeout(r, 150));
+  }
+}
+function stopPredict() {
+  if (!predicting) return;
+  predicting = false; $("#predictBtn").textContent = "Start predicting";
+  cameraOff(); $("#predictStatus").textContent = "Camera is off"; $("#predictStatus").hidden = false;
+}
+function showPrediction(results) {
+  const top = results[0];
+  $("#predLabel").textContent = top.prob >= 0.6 ? top.label : "Not sure...";
+  $("#predConf").textContent = `${(top.prob * 100).toFixed(0)}% confident`;
+  $("#bars").innerHTML = results.map(r => `<div class="bar"><span style="text-transform:capitalize">${esc(r.label)}</span><div class="track"><div class="fill" style="width:${r.prob*100}%"></div></div><span>${(r.prob*100).toFixed(0)}%</span></div>`).join("");
+}
+
+renderItems(); pollTraining();
+</script>
+</body>
+</html>

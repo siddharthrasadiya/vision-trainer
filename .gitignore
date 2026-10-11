@@ -1,0 +1,9 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Your personal photos and trained model (large / private)
+dataset/
+model.keras
+labels.json
