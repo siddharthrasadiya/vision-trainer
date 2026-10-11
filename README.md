@@ -35,7 +35,7 @@ Python · TensorFlow / Keras · OpenCV · NumPy · Flask · HTML / CSS / JavaScr
 ## Getting started (Windows)
 
 ```bash
-git clone https://github.com/<your-username>/vision-trainer.git
+git clone https://github.com/siddharthrasadiya/vision-trainer.git
 cd vision-trainer
 setup.bat          # creates venv and installs dependencies (one time)
 run_app.bat        # starts the app and opens http://127.0.0.1:5000
